@@ -26,6 +26,13 @@ float rectY = 100.0f;
 float rectWidth = 200.0f;
 float rectHeight = 200.0f;
 
+
+// Dragging state
+bool dragging = false;
+float dragOffsetX = 0.0f;
+float dragOffsetY = 0.0f;
+
+
 // Forward declarations
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -128,6 +135,50 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     break;
 
+    case WM_LBUTTONDOWN:
+    {
+        int mouseX = LOWORD(lParam);
+        int mouseY = HIWORD(lParam);
+
+        // Check if mouse is inside the rectangle
+        if (mouseX >= rectX && mouseX <= rectX + rectWidth &&
+            mouseY >= rectY && mouseY <= rectY + rectHeight)
+        {
+            dragging = true;
+            // Store offset between mouse and rectangle top-left
+            dragOffsetX = mouseX - rectX;
+            dragOffsetY = mouseY - rectY;
+            SetCapture(hWnd); // Capture mouse even if outside window
+        }
+    }
+    break;
+
+    case WM_MOUSEMOVE:
+    {
+        if (dragging)
+        {
+            int mouseX = LOWORD(lParam);
+            int mouseY = HIWORD(lParam);
+
+            // Move rectangle with mouse, keeping offset
+            rectX = mouseX - dragOffsetX;
+            rectY = mouseY - dragOffsetY;
+
+            InvalidateRect(hWnd, nullptr, FALSE); // Redraw
+        }
+    }
+    break;
+
+    case WM_LBUTTONUP:
+    {
+        if (dragging)
+        {
+            dragging = false;
+            ReleaseCapture(); // Stop capturing the mouse
+        }
+    }
+    break;
+
     case WM_COMMAND:
     {
         int wmId = LOWORD(wParam);
@@ -152,25 +203,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         BeginPaint(hWnd, &ps);
 
         pRenderTarget->BeginDraw();
-
         pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
         D2D1_RECT_F rect = D2D1::RectF(rectX, rectY, rectX + rectWidth, rectY + rectHeight);
         pRenderTarget->FillRectangle(rect, pBrush);
 
-
         pRenderTarget->EndDraw();
-
         EndPaint(hWnd, &ps);
-
-        // Move left
-        rectX -= 1.0f; // 1 pixel per frame
-
-        // If rectangle moves off-screen, wrap around
-        if (rectX + rectWidth < 0)
-            rectX = 800; // window width
-        // Tell Windows to repaint immediately
-        InvalidateRect(hWnd, nullptr, FALSE);
     }
     break;
 
